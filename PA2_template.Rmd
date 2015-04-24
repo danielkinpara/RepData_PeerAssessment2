@@ -18,10 +18,11 @@ options(scipen = 999)
 The first step was to read the file **activity.zip** and to save it in the object *dados*. The ZIP file must be placed in the same folder of this Markdown document in order to run the embedded code. The variable **date** was converted to a *date* class.
 
 ```{r echo=TRUE, warning=FALSE}
-if (!file.exists("activity.csv")) {
-        unzip("activity.zip")
-}
-dados <- read.csv("repdata-data-StormData.csv.bz2", header = TRUE, na.strings = "NA")
+dados <- read.csv(bzfile("repdata-data-StormData.csv.bz2"), header = TRUE, na.strings = "NA",
+                  colClasses = c("NULL", "character", "NULL", "character", "NULL", "NULL",
+                                 "factor", "factor", "NULL", "NULL", "NULL", "character",
+                                 rep("NULL", 10), "numeric", "numeric", "numeric",
+                                 "character", "numeric", "character", rep("NULL", 8), "numeric"))
 str(dados)
 
 ```
