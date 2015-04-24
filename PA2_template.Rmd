@@ -1,9 +1,11 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
+title: "Reproducible Research: Peer Assessment 2"
 output: 
   html_document:
     keep_md: true
 ---
+
+#Major Weather Events and its Impacts in the United States, 1955-2011
 
 Author: Daniel Kinpara  
 Date: April, 2015  
@@ -13,20 +15,93 @@ Sys.setlocale("LC_TIME", "English")
 Sys.setenv(tz = "UTC")
 options(scipen = 999)
 ```
-### 1. Loading and preprocessing the data
+### 1. Synopsis
 
-The first step was to read the file **activity.zip** and to save it in the object *dados*. The ZIP file must be placed in the same folder of this Markdown document in order to run the embedded code. The variable **date** was converted to a *date* class.
+The objective of this study is to determine the five most harmful types of weather events in the United States among the 48 listed in the Storm Data Event Table listed by the National Weather Service (NWS). The criteria used to rank the harmfulness is the injuries and fatalities caused to the population and the economic damages due to weather events. The study will comprehend the period of 1955 to 2011. It will use the National Oceanic & Atmospheric Administration's (NOAA) Storm Data database. For more details of how injuries and fatalities are accounted and economic damages calculated, see the document **Storm Data Preparation** available at [this website](http://www.nws.noaa.gov/directives/).
 
-```{r echo=TRUE, warning=FALSE}
-dados <- read.csv(bzfile("repdata-data-StormData.csv.bz2"), header = TRUE, na.strings = "NA",
-                  colClasses = c("NULL", "character", "NULL", "character", "NULL", "NULL",
-                                 "factor", "factor", "NULL", "NULL", "NULL", "character",
-                                 rep("NULL", 10), "numeric", "numeric", "numeric",
-                                 "character", "numeric", "character", rep("NULL", 8), "numeric"))
+---
+
+### 2. Data processing
+
+#### 2.1 Loading dataset
+
+The dataset is available in a compressed format (*bz2* extension) from [this link](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2). The file size is 47MB, what consumes time and memory resources to be completed load. In order to speed up the loading process and to use less resources, only ten variables were loaded, as listed below:
+
+1. **BGN-DATE** (character): date and time of the event occurrence ;
+2. **STATE** (factor): US state where the event took place;
+3. **EVTYPE** (character): 985 detailed event type;
+4. **FATALITIES** (numeric): number of death, direct or indirect related to the event;
+5. **INJURIES** (numeric): number of injuried people;
+6. **PROPDMG** (numeric): mantissa of the number of damages to properties;
+7. **PROPDMGEXP** (character): exponent of the previous number, coded as:
+    - "K", thousand US dollars;
+    - "M", million US dollars;
+    - "B", billion US dollars;
+8. **CROPDMG** (numeric): mantissa of the crop damage;
+9. **CROPDMGEXP** (character): exponent of the previous number, same coding of PROPDMGEXP;
+10. **REFNUM** (numeric): unique index number.
+
+The following code loads the dataset into **dados**, skipping unused columns. Missing data was assigned *NA*.
+
+```{r echo=TRUE, warning=FALSE, cache=TRUE}
+dados <- read.csv(bzfile("repdata-data-StormData.csv.bz2"),
+                  header = TRUE, na.strings = "NA",
+                  colClasses = c("NULL", "character", rep("NULL", 4), "factor",
+                                 "character", rep("NULL", 4), rep("NULL", 10),
+                                 "numeric","numeric", "numeric", "character",
+                                 "numeric", "character",rep("NULL", 8),
+                                 "numeric"))
+```
+  
+The dataset structure is:
+
+```{r echo=TRUE}
 str(dados)
+```
+
+#### 2.2 Pre-processing data
+
+Some pre-processing was necessary in order to reduce the number of variables and to allow numerical calculation. Date was extracted from **BGN-DATE** and stored into the variable **tempo**, a class date variable. **PROPDMG** and **PROPDMGEXP** were combined into the numeric variable **urbano**. **CROPDMG** and **CROPDMGEXP** were combined into the numeric variable **rural**. Both were set to the same scale of thousand of dollars.
+
+  
+```{r echo=TRUE, warning=FALSE, cache=TRUE}
+dados <- transform(dados, tempo = as.Date(dados$BGN_DATE, "%m/%d/%Y"),
+                   urbano = (dados$PROPDMG * 1e6 * (dados$PROPDMGEXP == "B") +
+                             dados$PROPDMG * 1e3 * (dados$PROPDMGEXP == "M") +
+                             dados$PROPDMG * (dados$PROPDMGEXP == "K") +
+                             dados$PROPDMG / 1e3 * (dados$PROPDMGEXP == "")),
+                   rural = (dados$CROPDMG * 1e6 * (dados$CROPDMGEXP == "B") +
+                            dados$CROPDMG * 1e3 * (dados$CROPDMGEXP == "M") +
+                            dados$CROPDMG * (dados$CROPDMGEXP == "K") +
+                            dados$CROPDMG / 1e3 * (dados$CROPDMGEXP == "")))
+dados <- dados[, c(2:5,11:13)]
+```
+  
+The new dataset structure is:
+
+```{r echo=TRUE}
+str(dados)
+```
+  
+```{r echo=TRUE}
+eventTypes <- c("ASTRONOMICAL LOW TIDE", "AVALANCHE", "BLIZZARD", "COASTAL FLOOD",
+                "COLD/WIND CHILL", "DEBRIS FLOW", "DENSE FOG", "DENSE SMOKE",
+                "DROUGHT", "DUST DEVIL", "DUST STORM", "EXCESSIVE HEAT",
+                "EXTREME COLD/WIND CHILL", "FLASH FLOOD", "FLOOD", "FROST/FREEZE",
+                "FUNNEL CLOUD", "FREEZING FOG", "HAIL", "HEAT", "HEAVY RAIN",
+                "HEAVY SNOW", "HIGH SURF", "HIGH WIND", "HURRICANE (TYPHOON)",
+                "ICE STORM", "LAKE-EFFECT SNOW", "LAKESHORE FLOOD", "LIGHTNING",
+                "MARINE HAIL", "MARINE HIGH WIND", "MARINE STRONG WIND", 
+                "MARINE THUNDERSTORM WIND", "RIP CURRENT", "SEICHE", "SLEET",
+                "STORM SURGE/TIDE", "STRONG WIND", "THUNDERSTORM WIND", "TORNADO",
+                "TROPICAL DEPRESSION", "TROPICAL STORM", "TSUNAMI", "VOLCANIC ASH",
+                "WATERSPOUT", "WILDFIRE", "WINTER STORM", "WINTER WEATHER")
+
 
 ```
   
-### 2. What is mean total number of steps taken per day?  
+### 3. Results
 
-The code below created a factor variable named **dia** that was used to split the dataset.
+
+### 4. Final considerations
+
