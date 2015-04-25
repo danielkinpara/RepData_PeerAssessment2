@@ -4,9 +4,11 @@ output:
   html_document:
     keep_md: true
 ---
-
+  
+---
+  
 #Major Weather Events in the US
-##and its Economical and Health Impacts, 1950-2011
+##and its Economic and Health Impacts, 1950-2011
 
 Author: Daniel Kinpara  
 Date: April, 2015  
@@ -14,7 +16,7 @@ Date: April, 2015
 ```{r configuration, include=FALSE}
 Sys.setlocale("LC_TIME", "English")
 Sys.setenv(tz = "UTC")
-options(scipen = 999)
+options(digits = 3)
 library(stringr)
 ```
 ### 1. Synopsis
@@ -27,28 +29,27 @@ The objective of this study is to determine the ten most harmful types of weathe
 
 #### 2.1 Loading dataset
 
-The dataset is available in a compressed format (*bz2* extension) from [this link](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2). The file size is 47MB, what consumes time and memory resources to be completed load. In order to speed up the loading process and to use less resources, only ten variables were loaded, as listed below:
+The dataset is available in a compressed format (*bz2* extension) from [this link](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2). The file size is 47MB, what consumes time and memory resources to be completed load. In order to speed up the loading process and to use less resources, only nine variables were loaded, as listed below:
 
 1. **BGN-DATE** (character): date and time of the event occurrence ;
-2. **STATE** (factor): US state where the event took place;
-3. **EVTYPE** (character): 985 detailed event type;
-4. **FATALITIES** (numeric): number of death, direct or indirect related to the event;
-5. **INJURIES** (numeric): number of injuried people;
-6. **PROPDMG** (numeric): mantissa of the number of damages to properties;
-7. **PROPDMGEXP** (character): exponent of the previous number, coded as:
+2. **EVTYPE** (character): 985 event types when converted to class factor;
+3. **FATALITIES** (numeric): number of death, direct or indirect related to the event;
+4. **INJURIES** (numeric): number of injuried people;
+5. **PROPDMG** (numeric): mantissa of the number of damages to properties;
+6. **PROPDMGEXP** (character): exponent of the previous number, coded as:
     - "K", thousand US dollars;
     - "M", million US dollars;
     - "B", billion US dollars;
-8. **CROPDMG** (numeric): mantissa of the crop damage;
-9. **CROPDMGEXP** (character): exponent of the previous number, same coding of PROPDMGEXP;
-10. **REFNUM** (numeric): unique index number.
+7. **CROPDMG** (numeric): mantissa of the crop damage;
+8. **CROPDMGEXP** (character): exponent of the previous number, same coding of PROPDMGEXP;
+9. **REFNUM** (numeric): unique index number.
 
 The following code loads the dataset into **dados**, skipping unused columns. Missing data was assigned *NA*.
 
-```{r loading echo=TRUE, warning=FALSE, cache=TRUE}
+```{r loading, echo=TRUE, warning=FALSE, cache=TRUE}
 dados <- read.csv(bzfile("repdata-data-StormData.csv.bz2"),
                   header = TRUE, na.strings = "NA",
-                  colClasses = c("NULL", "character", rep("NULL", 4), "factor",
+                  colClasses = c("NULL", "character", rep("NULL", 5),
                                  "character", rep("NULL", 4), rep("NULL", 10),
                                  "numeric","numeric", "numeric", "character",
                                  "numeric", "character",rep("NULL", 8),
@@ -63,19 +64,19 @@ str(dados)
 
 #### 2.2 Pre-processing data
 
-Some pre-processing was necessary in order to reduce the number of variables and to allow numerical calculation. Date was extracted from **BGN-DATE** and stored into the variable **tempo**, a class date variable. **PROPDMG** and **PROPDMGEXP** were combined into the numeric variable **urbano**. **CROPDMG** and **CROPDMGEXP** were combined into the numeric variable **rural**. Both were set to the same scale of thousand of dollars.
+Some pre-processing was necessary in order to reduce the number of variables and to allow numerical calculation. Date was extracted from **BGN-DATE** and stored into the variable **tempo**, a class date variable. **PROPDMG** and **PROPDMGEXP** were combined into the numeric variable **urbano**. **CROPDMG** and **CROPDMGEXP** were combined into the numeric variable **rural**. Both were set to the same scale of dollars.
   
-```{r smoothing echo=TRUE, warning=FALSE, cache=TRUE}
+```{r smoothing, echo=TRUE, warning=FALSE, cache=TRUE}
 dados <- transform(dados, tempo = as.Date(dados$BGN_DATE, "%m/%d/%Y"),
-                   urbano = (dados$PROPDMG * 1e6 * (dados$PROPDMGEXP == "B") +
-                             dados$PROPDMG * 1e3 * (dados$PROPDMGEXP == "M") +
-                             dados$PROPDMG * (dados$PROPDMGEXP == "K") +
-                             dados$PROPDMG / 1e3 * (dados$PROPDMGEXP == "")),
-                   rural = (dados$CROPDMG * 1e6 * (dados$CROPDMGEXP == "B") +
-                            dados$CROPDMG * 1e3 * (dados$CROPDMGEXP == "M") +
-                            dados$CROPDMG * (dados$CROPDMGEXP == "K") +
-                            dados$CROPDMG / 1e3 * (dados$CROPDMGEXP == "")))
-dados <- dados[, c(2:5, 10:13)]
+                   urbano = (dados$PROPDMG * 1e9 * (dados$PROPDMGEXP == "B") +
+                             dados$PROPDMG * 1e6 * (dados$PROPDMGEXP == "M") +
+                             dados$PROPDMG * 1e3 * (dados$PROPDMGEXP == "K") +
+                             dados$PROPDMG * (dados$PROPDMGEXP == "")),
+                   rural = (dados$CROPDMG * 1e9 * (dados$CROPDMGEXP == "B") +
+                            dados$CROPDMG * 1e6 * (dados$CROPDMGEXP == "M") +
+                            dados$CROPDMG * 1e3 * (dados$CROPDMGEXP == "K") +
+                            dados$CROPDMG * (dados$CROPDMGEXP == "")))
+dados <- dados[, c(2:4, 9:12)]
 ```
   
 The new dataset structure is:
@@ -86,7 +87,7 @@ str(dados)
   
 The next step is to clean **EVTYPE**. There are 985 different event types in the database. The non-standard events must be re-classified into the 48 listed event types defined by the NWS. In order to do that, each observation will be compared to the event types in the official list. If there's a match, the event will be assigned as the respective match. Otherwise, the event will be assigned as **NA**. The content of **EVTYPE** had the trailing spaces removed and the letters capitalized before matching.
   
-```{r events echo=TRUE, cache=TRUE}
+```{r events, echo=TRUE, cache=TRUE}
 eventTypes <- c("ASTRONOMICAL LOW TIDE", "AVALANCHE", "BLIZZARD", "COASTAL FLOOD",
                 "COLD/WIND CHILL", "DEBRIS FLOW", "DENSE FOG", "DENSE SMOKE",
                 "DROUGHT", "DUST DEVIL", "DUST STORM", "EXCESSIVE HEAT",
@@ -114,12 +115,12 @@ noMatchInjuries <- round(sum(dados$INJURIES[listNoMatch]) /
                            sum(dados$INJURIES))
 ```
   
-After matching, **`r noMatch`** observations remained not classified and it was assigned **NA** to them. They will not be used to further computation of impacts. This represents **`r round(noMatch/902297)`%** of the total observations, **`r noMatchDMG`%** of the total damages (properties + crops), **`r noMatchFatalities`%** of the total fatalities, and **`r noMatchInjuries`%** of the total injuries.
+After matching, **`r format(noMatch, big.mark = ",", scientific = FALSE)`** observations remained not classified and it was assigned **NA** to them. This represents **`r round(noMatch/902297)`%** of the total observations, **`r noMatchDMG`%** of the total damages (properties + crops), **`r noMatchFatalities`%** of the total fatalities, and **`r noMatchInjuries`%** of the total injuries. Since there aren't economic and health effects, they will not be used for further computation of impacts. 
 
 The final structure of the data is:
   
 ```{r echo=TRUE}
-dados <- dados[!listNoMatch, c(1,3:9)]
+dados <- dados[!listNoMatch,3:9]
 str(dados)
 ```
   
@@ -127,28 +128,102 @@ str(dados)
   
 ### 3. Results
 
-The data used in the analysis comprehend **`r length(dados$REFNUM)`** observations of weather events that took place from **`r format(min(dados$tempo), "%m/%d/%Y")`** to **`r format(max(dados$tempo), "%m/%d/%Y")`**.
+The data used in the analysis comprehend **`r format(length(dados$REFNUM), big.mark = ",", scientific = FALSE)`** observations of weather events that took place from **`r format(min(dados$tempo), "%m/%d/%Y")`** to **`r format(max(dados$tempo), "%m/%d/%Y")`**.
   
-Along this period, weather events were responsible for **$`r sum(dados$urbano)`** thousand of dollars in properties damages, **$`r sum(dados$rural)`** thousand of dollars in crops loses. In terms of health, **$`r sum(dados$INJURIES)`** inhabitants were injured, directly or indirectly due to weather events. A total of **`r sum(dados$FATALITIES)`** souls were lost.
+Along this period, weather events were responsible for **US$ `r format(sum(dados$urbano), big.mark = ",", scientific = FALSE)`** in properties damages and **US$ `r format(sum(dados$rural), big.mark = ",", scientific = FALSE)`** in crops loses. In terms of health, **`r format(sum(dados$INJURIES), big.mark = ",", scientific = FALSE)`** inhabitants were injured, directly or indirectly,  due to weather events. A total of **`r format(sum(dados$FATALITIES), big.mark = ",", scientific = FALSE)`** souls were lost.
 
 #### 3.1 Economic impacts
 
-The following code will produce the graph of ten events that caused more economic damages. Since the impacts have two categories, a panel will be presented.
+The following code will produce the graph of five events that caused more economic damages. Since the impacts have two categories, a panel will three graphs is presented. The graphs computes the properties damages, the crops damages, and the sum of both. It's important to notice that the graph *Total* is the sum of the overall economic damages due to any weather event. It doesn't represent the simple sum of the graph *Properties* and graph *Crops*. The graphs show the damage in terms of billion of dollars.
   
-```{r economic echo=TRUE, fig.height=10}
-dados <- transform(dados, economico = sum(urbano, rural))
-resUrbano <- order(with(dados, tapply(urbano, evento, sum)), decreasing = TRUE)
-resRural <- order(with(dados, tapply(rural, evento, sum)), decreasing = TRUE)
-resEcon <- order(with(dados, tapply(economico, evento, sum)), decreasing = TRUE)
+```{r economic, echo=TRUE, fig.height=4}
+dados <- transform(dados, economico = (urbano + rural))
+
+resUrbano <- with(dados, tapply(urbano, evento, sum))
+ord <- order(sapply(resUrbano, "[", 1), decreasing = TRUE)
+nomes1 <- names(resUrbano[ord[1:5]])
+
+resRural <- with(dados, tapply(rural, evento, sum))
+ord <- order(sapply(resRural, "[", 1), decreasing = TRUE)
+nomes2 <- names(resRural[ord[1:5]])
+
+resEcon <- with(dados, tapply(economico, evento, sum))
+ord <- order(sapply(resEcon, "[", 1), decreasing = TRUE)
+nomes3 <- names(resEcon[ord[1:5]])
+
+x1 <- c(1:5)
+y1 <- as.numeric(resUrbano[ord[1:5]])/1e9
+y2 <- as.numeric(resRural[ord[1:5]])/1e9
+y3 <- as.numeric(resEcon[ord[1:5]])/1e9
 
 par(mfrow = c(1, 3))
-x1 <- names(resUrbano[1:5])
-y1 <- as.numeric(resUrbano[1:5])
-plot(x1, y1, type = "h")
-
-
+barplot(y1, col = rainbow(5), ylim = c(0, 200), axes = TRUE,
+        ylab = "billion US$", main = "Properties")
+legend("topright", nomes1, fill = rainbow(5), cex = 0.8)
+barplot(y2, col = rainbow(5), ylim = c(0, 200), axes = TRUE,
+        ylab = "billion US$", main = "Crops")
+legend("topright", nomes2, fill = rainbow(5), cex = 0.8)
+barplot(y3, col = rainbow(5), ylim = c(0, 200), axes = TRUE,
+        ylab = "billion US$", main = "Total")
+legend("topright", nomes3, fill = rainbow(5), cex = 0.8)
+```
   
+Observing the *Total* graph, flood is the major cause of economic damages by far. More than twice the damage caused by tornados. The total economic damage caused by flood is **US$ `r format(y3[1], big.mark = ",", scientific = FALSE)`** billion dollars. Tornado accounts for **US$ `r format(y3[2], big.mark = ",", scientific = FALSE)`** billion dollars.
+  
+Damage to properties overcome damage to crops. Crop damages correspond to only **`r with(dados, sum(rural)/sum(economico))`%** of total economic damages. Properties indeed are more affected by flood and tornado. However, crops suffer more from hail and drought. Crops seem to be more damaged by events that have phisyological effects than events that have mechanical effects.
+  
+#### 4.1 Health impacts
+  
+The next code will produce the graph of five events that caused more health damages. Health damages are classified as injuries or fatablities. So, as the economic impact graphs, there are three graphs too. The graphs computes the injuries to people, the deaths, and the sum of both in terms of thousand of inhabitants. The graph *Total* is the sum of the overall injuries and deaths. It doesn't represent the simple sum of the graph *Injuries* and graph *Fatalities*.
+  
+```{r health, echo=TRUE, fig.height=4}
+dados <- transform(dados, populacao = (INJURIES + FATALITIES))
+
+resInjuries <- with(dados, tapply(INJURIES, evento, sum))
+ord <- order(sapply(resInjuries, "[", 1), decreasing = TRUE)
+nomes1 <- names(resInjuries[ord[1:5]])
+
+resFatalities <- with(dados, tapply(FATALITIES, evento, sum))
+ord <- order(sapply(resFatalities, "[", 1), decreasing = TRUE)
+nomes2 <- names(resFatalities[ord[1:5]])
+
+resPop <- with(dados, tapply(populacao, evento, sum))
+ord <- order(sapply(resPop, "[", 1), decreasing = TRUE)
+nomes3 <- names(resPop[ord[1:5]])
+
+x1 <- c(1:5)
+y1 <- as.numeric(resInjuries[ord[1:5]])/1e3
+y2 <- as.numeric(resFatalities[ord[1:5]])/1e3
+y3 <- as.numeric(resPop[ord[1:5]])/1e3
+
+par(mfrow = c(1, 3))
+barplot(y1, col = rainbow(5), ylim = c(0, 100), ylab = "thousand inhabitants",
+        main = "Injuries")
+legend("topright", nomes1, fill = rainbow(5), cex = 0.8)
+barplot(y2, col = rainbow(5), ylim = c(0, 100), ylab = "thousand inhabitants",
+        main = "Fatalities")
+legend("topright", nomes2, fill = rainbow(5), cex = 0.8)
+barplot(y3, col = rainbow(5), ylim = c(0, 100), ylab = "thousand inhabitants",
+        main = "Total")
+legend("topright", nomes3, fill = rainbow(5), cex = 0.8)
+```
+  
+As the graphs present, tornado is the major cause of injuries and fatalities. Tornado accounts for **`r format(y3[1], big.mark = ",", scientific = FALSE)`** thousand inahitants with health incidents. More than seven times the incidents caused by heat.  Heat accounts for **`r format(y3[2], big.mark = ",", scientific = FALSE)`** thousand inahitants with health incidents.
+
+Different from the economic impacts, the four major causes of health impacts are the same for injuries and fatalities. The only difference is that rip current causes more fatalities than thunderstorm wind. On the other hand, thunderstorm wind causes more injuries than rip current.
+
+It's also noticeable that the proportion of injuries and fatalities is much higher in tornado events than heat events. While there is one fatality for each **`r format(round(y1[1]/y2[1]), big.mark = ",", scientific = FALSE)`** injuried individuals due to tornados, heat proportion is of one fatality for each **`r format(round(y1[2]/y2[2]), big.mark = ",", scientific = FALSE)`** injuried individuals. So, the event of heat is more likely to cause a higher percentage of deaths than the event of a tornado.
+
 ---
   
 ### 4. Final considerations
 
+This analysis was quite superficial and it didn't explore all the possibilities presented by the data available. It's suggested further studies to encompass:
+  
+- the impact differences among the North American states;
+- the change of the weather events severity along time;
+- the mitigation of impacts due to a better understanding of the mechanism behind the effect of the weather event over crops and people;
+- the relation between the event duration and frequency and the impacts observerd;
+- and the recurrence of severe weather events.
+
+Of course, it's not an exhaustive list of possible studies, but they may present a solid base of longitudinal studies in order to stablish trends for the weather events. So, more strategies can be designed to reduce the material and life losses.
