@@ -14,6 +14,7 @@ Date: April, 2015
 Sys.setlocale("LC_TIME", "English")
 Sys.setenv(tz = "UTC")
 options(scipen = 999)
+library(stringr)
 ```
 ### 1. Synopsis
 
@@ -62,7 +63,6 @@ str(dados)
 #### 2.2 Pre-processing data
 
 Some pre-processing was necessary in order to reduce the number of variables and to allow numerical calculation. Date was extracted from **BGN-DATE** and stored into the variable **tempo**, a class date variable. **PROPDMG** and **PROPDMGEXP** were combined into the numeric variable **urbano**. **CROPDMG** and **CROPDMGEXP** were combined into the numeric variable **rural**. Both were set to the same scale of thousand of dollars.
-
   
 ```{r echo=TRUE, warning=FALSE, cache=TRUE}
 dados <- transform(dados, tempo = as.Date(dados$BGN_DATE, "%m/%d/%Y"),
@@ -83,6 +83,8 @@ The new dataset structure is:
 str(dados)
 ```
   
+The next step is to clean **EVTYPE**. There are 985 different event types in the database. The non-standard events must be re-classified into the 48 listed event types defined by the NWS. In order to do that, each observation will be compared to the event types in the official list. If there's a match, the event will be assigned as the respective match. If no match is found, the event will be assigned as **NA**. **EVTYPE** had the trailing spaces removed and the letters capitalized before matching.
+  
 ```{r echo=TRUE}
 eventTypes <- c("ASTRONOMICAL LOW TIDE", "AVALANCHE", "BLIZZARD", "COASTAL FLOOD",
                 "COLD/WIND CHILL", "DEBRIS FLOW", "DENSE FOG", "DENSE SMOKE",
@@ -96,10 +98,15 @@ eventTypes <- c("ASTRONOMICAL LOW TIDE", "AVALANCHE", "BLIZZARD", "COASTAL FLOOD
                 "STORM SURGE/TIDE", "STRONG WIND", "THUNDERSTORM WIND", "TORNADO",
                 "TROPICAL DEPRESSION", "TROPICAL STORM", "TSUNAMI", "VOLCANIC ASH",
                 "WATERSPOUT", "WILDFIRE", "WINTER STORM", "WINTER WEATHER")
-
-
+dados <- transform(dados, event = factor(rep("NA", 902297), levels = eventTypes))
+for(i in 1:48){
+        match <- grep(eventTypes[i], str_trim(toupper(dados$EVTYPE)))
+        dados$event[match] <- eventTypes[i]
+}
 ```
   
+After matching, **`r sum(is.na(dados$event))`** observations remained not classified and it was assigned **NA** to them.
+
 ### 3. Results
 
 
