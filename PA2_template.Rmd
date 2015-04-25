@@ -29,7 +29,7 @@ The objective of this study is to determine the five most harmful types of weath
 
 #### 2.1 Loading dataset
 
-The dataset is available in a compressed format (*bz2* extension) from [this link](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2). The file size is 47MB, what consumes time and memory resources to be completed load. In order to speed up the loading process and to use less resources, only nine variables were loaded, as listed below:
+The dataset is available in a compressed format (*bz2* extension) from [this link](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2). The file size is 47MB, which consumes time and memory resources to be completed load. In order to speed up the loading process and to use less resources, only nine variables were loaded, as listed below:
 
 1. **BGN-DATE** (character): date and time of the event occurrence ;
 2. **EVTYPE** (character): 985 event types when converted to class factor;
