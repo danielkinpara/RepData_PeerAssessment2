@@ -11,7 +11,7 @@ Date: April, 2015
 
 ### 1. Synopsis
 
-The objective of this study is to determine the ten most harmful types of weather events in the United States among the 48 listed in the Storm Data Event Table listed by the National Weather Service (NWS). The criteria used to rank the harmfulness is the injuries and fatalities caused to the population and the economic damages due to weather events. The study will comprehend the period of 1950 to 2011. It will use the National Oceanic & Atmospheric Administration's (NOAA) Storm Data database. For more details of how injuries and fatalities are accounted and economic damages calculated, see the document **Storm Data Preparation** available at [this website](http://www.nws.noaa.gov/directives/).
+The objective of this study is to determine the five most harmful types of weather events in the United States among the 48 listed in the Storm Data Event Table listed by the National Weather Service (NWS). The criterias used to rank the harmfulness are the injuries and fatalities caused to the population and the economic damages due to weather events. The study will comprehend the period of 1950 to 2011. It will use the National Oceanic & Atmospheric Administration's (NOAA) Storm Data database. For more details of how injuries and fatalities are accounted and economic damages calculated, see the document **Storm Data Preparation** available at [this website](http://www.nws.noaa.gov/directives/).
 
 ---
 
@@ -19,18 +19,18 @@ The objective of this study is to determine the ten most harmful types of weathe
 
 #### 2.1 Loading dataset
 
-The dataset is available in a compressed format (*bz2* extension) from [this link](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2). The file size is 47MB, what consumes time and memory resources to be completed load. In order to speed up the loading process and to use less resources, only nine variables were loaded, as listed below:
+The dataset is available in a compressed format (*bz2* extension) from [this link](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2). The file size is 47MB, which consumes time and memory resources to be complete loaded. In order to speed up the loading process and to use less resources, only nine variables were read from the data file, as listed below:
 
 1. **BGN-DATE** (character): date and time of the event occurrence ;
-2. **EVTYPE** (character): 985 event types when converted to class factor;
-3. **FATALITIES** (numeric): number of death, direct or indirect related to the event;
+2. **EVTYPE** (character): 985 event types (when converted to class factor);
+3. **FATALITIES** (numeric): number of deaths, direct or indirect related to the event;
 4. **INJURIES** (numeric): number of injuried people;
 5. **PROPDMG** (numeric): mantissa of the number of damages to properties;
 6. **PROPDMGEXP** (character): exponent of the previous number, coded as:
     - "K", thousand US dollars;
     - "M", million US dollars;
     - "B", billion US dollars;
-7. **CROPDMG** (numeric): mantissa of the crop damage;
+7. **CROPDMG** (numeric): mantissa of the crop damages;
 8. **CROPDMGEXP** (character): exponent of the previous number, same coding of PROPDMGEXP;
 9. **REFNUM** (numeric): unique index number.
 
@@ -103,7 +103,7 @@ str(dados)
 ##  $ rural     : num  0 0 0 0 0 0 0 0 0 0 ...
 ```
   
-The next step is to clean **EVTYPE**. There are 985 different event types in the database. The non-standard events must be re-classified into the 48 listed event types defined by the NWS. In order to do that, each observation will be compared to the event types in the official list. If there's a match, the event will be assigned as the respective match. Otherwise, the event will be assigned as **NA**. The content of **EVTYPE** had the trailing spaces removed and the letters capitalized before matching.
+The next step was to clean **EVTYPE**. There are 985 different event types in the database. The non-standard events were re-classified into the 48 listed event types defined by the NWS. In order to do that, each observation was compared to the event types in the official list. If there's a match, the event was assigned as the respective match. Otherwise, the event was assigned as **NA**. The content of **EVTYPE** had the trailing spaces removed and the letters capitalized before matching.
   
 
 ```r
@@ -124,23 +124,25 @@ for(i in 1:48){
         match <- grep(eventTypes[i], str_trim(toupper(dados$EVTYPE)))
         dados$evento[match] <- eventTypes[i]
 }
+```
+
+
+```r
 listNoMatch <- is.na(dados$evento)
 noMatch <- sum(listNoMatch)
-noMatchDMG <- round(sum(dados$rural[listNoMatch], dados$urbano[listNoMatch]) / 
-                    sum(dados$rural, dados$urbano))
-noMatchFatalities <- round(sum(dados$FATALITIES[listNoMatch]) /
-                           sum(dados$FATALITIES))
-noMatchInjuries <- round(sum(dados$INJURIES[listNoMatch]) /
-                           sum(dados$INJURIES))
+noMatchDMG <- round(with(dados, sum(rural[listNoMatch] + urbano[listNoMatch]) / 
+                    sum(rural + urbano) * 100))
+noMatchHTH <- round(with(dados, sum(FATALITIES[listNoMatch] + INJURIES[listNoMatch]) /
+                           sum(FATALITIES + INJURIES) * 100))
 ```
   
-After matching, **238,109** observations remained not classified and it was assigned **NA** to them. This represents **0%** of the total observations, **0%** of the total damages (properties + crops), **0%** of the total fatalities, and **0%** of the total injuries. Since there aren't economic and health effects, they will not be used for further computation of impacts. 
-
-The final structure of the data is:
+After matching, **238,109** observations remained not classified and it was assigned **NA** to them. This represents **26%** of the total observations, **31%** of the total damages (properties + crops) and **8%** of the total health impacts. They were not used for further computation of impacts. 
+  
+The final structure of the data is:  
   
 
 ```r
-dados <- dados[!listNoMatch,3:9]
+dados <- dados[!listNoMatch,2:8]
 str(dados)
 ```
 
@@ -165,7 +167,7 @@ Along this period, weather events were responsible for **US$ 288,750,676,877** i
 
 #### 3.1 Economic impacts
 
-The following code will produce the graph of five events that caused more economic damages. Since the impacts have two categories, a panel will three graphs is presented. The graphs computes the properties damages, the crops damages, and the sum of both. It's important to notice that the graph *Total* is the sum of the overall economic damages due to any weather event. It doesn't represent the simple sum of the graph *Properties* and graph *Crops*. The graphs show the damage in terms of billion of dollars.
+The following code produced the graph of five events that caused more economic damages. Since the impacts have two categories, a panel with three graphs was presented. The graphs computed the properties damages, the crops damages, and the sum of both. It's important to notice that the graph *Total* was the sum of the overall economic damages due to any weather event. It didn't represent the simple sum of the graph *Properties* and graph *Crops*. The graphs presented the damage in terms of billion of dollars.
   
 
 ```r
@@ -189,23 +191,26 @@ y2 <- as.numeric(resRural[ord[1:5]])/1e9
 y3 <- as.numeric(resEcon[ord[1:5]])/1e9
 
 par(mfrow = c(1, 3))
-barplot(y1, col = rainbow(5), ylim = c(0, 200), axes = TRUE, ylab = "billion US$", main = "Properties")
+barplot(y1, col = rainbow(5), ylim = c(0, 200), axes = TRUE,
+        ylab = "billion US$", main = "Properties")
 legend("topright", nomes1, fill = rainbow(5), cex = 0.8)
-barplot(y2, col = rainbow(5), ylim = c(0, 200), axes = TRUE, ylab = "billion US$", main = "Crops")
+barplot(y2, col = rainbow(5), ylim = c(0, 200), axes = TRUE,
+        ylab = "billion US$", main = "Crops")
 legend("topright", nomes2, fill = rainbow(5), cex = 0.8)
-barplot(y3, col = rainbow(5), ylim = c(0, 200), axes = TRUE, ylab = "billion US$", main = "Total")
+barplot(y3, col = rainbow(5), ylim = c(0, 200), axes = TRUE,
+        ylab = "billion US$", main = "Total")
 legend("topright", nomes3, fill = rainbow(5), cex = 0.8)
 ```
 
 ![](PA2_template_files/figure-html/economic-1.png) 
   
-Observing the *Total* graph, flood is the major cause of economic damages by far. More than twice the damage caused by tornados. The total economic damage caused by flood is **US$ 180**. Tornado accounts for **US$ 58.9**.
+Observing the *Total* graph, flood was the major cause of economic damages by far. More than twice the damage caused by tornados. The total economic damage caused by flood was **US$ 180** billion dollars. Tornado accounted for **US$ 59** billion dollars.
   
-Damage to properties overcome damage to crops. Crop damages correspond to only **0.123%** of total economic damages. Properties indeed are more affected by flood and tornado. However, crops suffer more from hail and drought. Crops seem to be more damaged by events that have phisyological effects than events that have mechanical effects.
+Damage to properties overaome damage to crops. Crop damages corresponded to only **12.27%** of total economic damages. Properties indeed were more affected by flood and tornado. However, crops suffered more from hail and drought. Crops seemed to be more damaged by events that have phisyological effects than events that have mechanical effects.
   
-#### 4.1 Health impacts
+####3.2 Health impacts
   
-The next code will produce the graph of five events that caused more health damages. Health damages are classified as injuries or fatablities. So, as the economic impact graphs, there are three graphs too. The graphs computes the injuries to people, the deaths, and the sum of both in terms of thousand of inhabitants. The graph *Total* is the sum of the overall injuries and deaths. It doesn't represent the simple sum of the graph *Injuries* and graph *Fatalities*.
+The next code  produced the graph of five events that caused more health damages. Health damages were classified as injuries or fatalities. So, as the economic impact graphs, there were three graphs too. The graphs computed the injuries to people, the deaths, and the sum of both in terms of thousand of inhabitants. The graph *Total* was the sum of the overall injuries and deaths. It didn't represent the simple sum of the graph *Injuries* and graph *Fatalities*.
   
 
 ```r
@@ -229,21 +234,24 @@ y2 <- as.numeric(resFatalities[ord[1:5]])/1e3
 y3 <- as.numeric(resPop[ord[1:5]])/1e3
 
 par(mfrow = c(1, 3))
-barplot(y1, col = rainbow(5), ylim = c(0, 100), ylab = "thousand inhabitants", main = "Injuries")
+barplot(y1, col = rainbow(5), ylim = c(0, 100), ylab = "thousand inhabitants",
+        main = "Injuries")
 legend("topright", nomes1, fill = rainbow(5), cex = 0.8)
-barplot(y2, col = rainbow(5), ylim = c(0, 100), ylab = "thousand inhabitants", main = "Fatalities")
+barplot(y2, col = rainbow(5), ylim = c(0, 100), ylab = "thousand inhabitants",
+        main = "Fatalities")
 legend("topright", nomes2, fill = rainbow(5), cex = 0.8)
-barplot(y3, col = rainbow(5), ylim = c(0, 100), ylab = "thousand inhabitants", main = "Total")
+barplot(y3, col = rainbow(5), ylim = c(0, 100), ylab = "thousand inhabitants",
+        main = "Total")
 legend("topright", nomes3, fill = rainbow(5), cex = 0.8)
 ```
 
 ![](PA2_template_files/figure-html/health-1.png) 
   
-As the graphs show, tornado is the major cause of injuries and fatalities. Tornado accounts for **97** thousand inahitants with health incidents. More than five times the incidents caused by heat.  Heat accounts for **12.4** thousand inahitants with health incidents.
+As the graphs present, tornado was the major cause of injuries and fatalities. Tornado accounted for **97** thousand inahitants with health incidents. More than seven times the incidents caused by heat.  Heat accounted for **12** thousand inahitants with health incidents.
 
-Different from the economic impacts, the four major causes of health impacts are the same for injuries and fatalities. The only difference is that rip current causes more fatalities than thunderstorm wind. On the other hand, thunderstorm wind causes more injuries than rip current.
+Different from the economic impacts, the four major causes of health impacts were the same for injuries and fatalities: tornado, heat, flood, and lightning. The only difference was that rip current caused more fatalities than thunderstorm wind. On the other hand, thunderstorm wind caused more injuries than rip current.
 
-It's also noticeable that the proportion of injuries and fatalities is much higher in tornado events than heat events. While there is one fatality to **16** injuried individuals due to tornados, heat proportion is of one fatality to **3** injuried individuals. So, the event of heat is more likely to cause a higher percentage of deaths than the event of a tornado.
+It's also noticeable that the proportion of injuries and fatalities was much higher in tornado events than heat events. While there was one fatality for each **16** injuried individuals due to tornados, heat proportion was of one fatality for each **3** injuried individuals. So, the event of heat was more likely to cause a higher percentage of deaths than the event of a tornado.
 
 ---
   
@@ -254,7 +262,7 @@ This analysis was quite superficial and it didn't explore all the possibilities 
 - the impact differences among the North American states;
 - the change of the weather events severity along time;
 - the mitigation of impacts due to a better understanding of the mechanism behind the effect of the weather event over crops and people;
-- the relation between the event duration and frequency and the impacts observerd;
+- the relation between the event's duration and frequency and the impacts observerd;
 - and the recurrence of severe weather events.
 
 Of course, it's not an exhaustive list of possible studies, but they may present a solid base of longitudinal studies in order to stablish trends for the weather events. So, more strategies can be designed to reduce the material and life losses.
