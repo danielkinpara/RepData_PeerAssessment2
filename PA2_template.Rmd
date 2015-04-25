@@ -5,7 +5,8 @@ output:
     keep_md: true
 ---
 
-#Major Weather Events and its Impacts in the United States, 1955-2011
+#Major Weather Events in the US
+##and its Economical and Health Impacts, 1950-2011
 
 Author: Daniel Kinpara  
 Date: April, 2015  
@@ -18,7 +19,7 @@ library(stringr)
 ```
 ### 1. Synopsis
 
-The objective of this study is to determine the five most harmful types of weather events in the United States among the 48 listed in the Storm Data Event Table listed by the National Weather Service (NWS). The criteria used to rank the harmfulness is the injuries and fatalities caused to the population and the economic damages due to weather events. The study will comprehend the period of 1955 to 2011. It will use the National Oceanic & Atmospheric Administration's (NOAA) Storm Data database. For more details of how injuries and fatalities are accounted and economic damages calculated, see the document **Storm Data Preparation** available at [this website](http://www.nws.noaa.gov/directives/).
+The objective of this study is to determine the ten most harmful types of weather events in the United States among the 48 listed in the Storm Data Event Table listed by the National Weather Service (NWS). The criteria used to rank the harmfulness is the injuries and fatalities caused to the population and the economic damages due to weather events. The study will comprehend the period of 1950 to 2011. It will use the National Oceanic & Atmospheric Administration's (NOAA) Storm Data database. For more details of how injuries and fatalities are accounted and economic damages calculated, see the document **Storm Data Preparation** available at [this website](http://www.nws.noaa.gov/directives/).
 
 ---
 
@@ -44,7 +45,7 @@ The dataset is available in a compressed format (*bz2* extension) from [this lin
 
 The following code loads the dataset into **dados**, skipping unused columns. Missing data was assigned *NA*.
 
-```{r echo=TRUE, warning=FALSE, cache=TRUE}
+```{r loading echo=TRUE, warning=FALSE, cache=TRUE}
 dados <- read.csv(bzfile("repdata-data-StormData.csv.bz2"),
                   header = TRUE, na.strings = "NA",
                   colClasses = c("NULL", "character", rep("NULL", 4), "factor",
@@ -64,7 +65,7 @@ str(dados)
 
 Some pre-processing was necessary in order to reduce the number of variables and to allow numerical calculation. Date was extracted from **BGN-DATE** and stored into the variable **tempo**, a class date variable. **PROPDMG** and **PROPDMGEXP** were combined into the numeric variable **urbano**. **CROPDMG** and **CROPDMGEXP** were combined into the numeric variable **rural**. Both were set to the same scale of thousand of dollars.
   
-```{r echo=TRUE, warning=FALSE, cache=TRUE}
+```{r smoothing echo=TRUE, warning=FALSE, cache=TRUE}
 dados <- transform(dados, tempo = as.Date(dados$BGN_DATE, "%m/%d/%Y"),
                    urbano = (dados$PROPDMG * 1e6 * (dados$PROPDMGEXP == "B") +
                              dados$PROPDMG * 1e3 * (dados$PROPDMGEXP == "M") +
@@ -74,7 +75,7 @@ dados <- transform(dados, tempo = as.Date(dados$BGN_DATE, "%m/%d/%Y"),
                             dados$CROPDMG * 1e3 * (dados$CROPDMGEXP == "M") +
                             dados$CROPDMG * (dados$CROPDMGEXP == "K") +
                             dados$CROPDMG / 1e3 * (dados$CROPDMGEXP == "")))
-dados <- dados[, c(2:5,11:13)]
+dados <- dados[, c(2:5, 10:13)]
 ```
   
 The new dataset structure is:
@@ -83,9 +84,9 @@ The new dataset structure is:
 str(dados)
 ```
   
-The next step is to clean **EVTYPE**. There are 985 different event types in the database. The non-standard events must be re-classified into the 48 listed event types defined by the NWS. In order to do that, each observation will be compared to the event types in the official list. If there's a match, the event will be assigned as the respective match. If no match is found, the event will be assigned as **NA**. **EVTYPE** had the trailing spaces removed and the letters capitalized before matching.
+The next step is to clean **EVTYPE**. There are 985 different event types in the database. The non-standard events must be re-classified into the 48 listed event types defined by the NWS. In order to do that, each observation will be compared to the event types in the official list. If there's a match, the event will be assigned as the respective match. Otherwise, the event will be assigned as **NA**. The content of **EVTYPE** had the trailing spaces removed and the letters capitalized before matching.
   
-```{r echo=TRUE}
+```{r events echo=TRUE, cache=TRUE}
 eventTypes <- c("ASTRONOMICAL LOW TIDE", "AVALANCHE", "BLIZZARD", "COASTAL FLOOD",
                 "COLD/WIND CHILL", "DEBRIS FLOW", "DENSE FOG", "DENSE SMOKE",
                 "DROUGHT", "DUST DEVIL", "DUST STORM", "EXCESSIVE HEAT",
@@ -98,17 +99,56 @@ eventTypes <- c("ASTRONOMICAL LOW TIDE", "AVALANCHE", "BLIZZARD", "COASTAL FLOOD
                 "STORM SURGE/TIDE", "STRONG WIND", "THUNDERSTORM WIND", "TORNADO",
                 "TROPICAL DEPRESSION", "TROPICAL STORM", "TSUNAMI", "VOLCANIC ASH",
                 "WATERSPOUT", "WILDFIRE", "WINTER STORM", "WINTER WEATHER")
-dados <- transform(dados, event = factor(rep("NA", 902297), levels = eventTypes))
+dados <- transform(dados, evento = factor(rep("NA", 902297), levels = eventTypes))
 for(i in 1:48){
         match <- grep(eventTypes[i], str_trim(toupper(dados$EVTYPE)))
-        dados$event[match] <- eventTypes[i]
+        dados$evento[match] <- eventTypes[i]
 }
+listNoMatch <- is.na(dados$evento)
+noMatch <- sum(listNoMatch)
+noMatchDMG <- round(sum(dados$rural[listNoMatch], dados$urbano[listNoMatch]) / 
+                    sum(dados$rural, dados$urbano))
+noMatchFatalities <- round(sum(dados$FATALITIES[listNoMatch]) /
+                           sum(dados$FATALITIES))
+noMatchInjuries <- round(sum(dados$INJURIES[listNoMatch]) /
+                           sum(dados$INJURIES))
 ```
   
-After matching, **`r sum(is.na(dados$event))`** observations remained not classified and it was assigned **NA** to them.
+After matching, **`r noMatch`** observations remained not classified and it was assigned **NA** to them. They will not be used to further computation of impacts. This represents **`r round(noMatch/902297)`%** of the total observations, **`r noMatchDMG`%** of the total damages (properties + crops), **`r noMatchFatalities`%** of the total fatalities, and **`r noMatchInjuries`%** of the total injuries.
 
+The final structure of the data is:
+  
+```{r echo=TRUE}
+dados <- dados[!listNoMatch, c(1,3:9)]
+str(dados)
+```
+  
+---
+  
 ### 3. Results
 
+The data used in the analysis comprehend **`r length(dados$REFNUM)`** observations of weather events that took place from **`r format(min(dados$tempo), "%m/%d/%Y")`** to **`r format(max(dados$tempo), "%m/%d/%Y")`**.
+  
+Along this period, weather events were responsible for **$`r sum(dados$urbano)`** thousand of dollars in properties damages, **$`r sum(dados$rural)`** thousand of dollars in crops loses. In terms of health, **$`r sum(dados$INJURIES)`** inhabitants were injured, directly or indirectly due to weather events. A total of **`r sum(dados$FATALITIES)`** souls were lost.
 
+#### 3.1 Economic impacts
+
+The following code will produce the graph of ten events that caused more economic damages. Since the impacts have two categories, a panel will be presented.
+  
+```{r economic echo=TRUE, fig.height=10}
+dados <- transform(dados, economico = sum(urbano, rural))
+resUrbano <- order(with(dados, tapply(urbano, evento, sum)), decreasing = TRUE)
+resRural <- order(with(dados, tapply(rural, evento, sum)), decreasing = TRUE)
+resEcon <- order(with(dados, tapply(economico, evento, sum)), decreasing = TRUE)
+
+par(mfrow = c(1, 3))
+x1 <- names(resUrbano[1:5])
+y1 <- as.numeric(resUrbano[1:5])
+plot(x1, y1, type = "h")
+
+
+  
+---
+  
 ### 4. Final considerations
 
